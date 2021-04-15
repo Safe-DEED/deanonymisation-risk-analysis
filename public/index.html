@@ -9,9 +9,26 @@
 <body>
 
 <form method="post" action="/upload" enctype="multipart/form-data">
-	<label for="inputfile">Select a file:</label>	
-	<input type="file" id="inputfile" name="inputfile"><br>
-	<input type="submit" value="Upload">
+	<p>
+		<label for="inputfile">Select a file:</label>	
+		<input type="file" id="inputfile" name="inputfile">
+	</p>
+	
+	<p>
+		<label>Type of data:</label><br>
+		<input type="radio" name="type" value="tabular">Tabular / Non-Aggregated</input><br>
+		<input type="radio" name="type" value="aggregated">Aggregated</input><br>
+		<input type="radio" name="type" value="invoices">Invoices</input>
+	</p>
+	
+	<p>
+		<label for="separator">Separator:</label>
+		<input type="text" id="separator" name="separator" style="width:12px"/>
+	</p>
+	
+	<p>
+		<input type="submit" value="Upload">
+	</p>
 </form>
 
 </body>

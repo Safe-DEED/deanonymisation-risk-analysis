@@ -1,0 +1,216 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<title>Safe-DEED Invoices Data De-Anonymisation Risk Analysis</title>
+<script src="https://cdn.plot.ly/plotly-1.2.0.min.js"></script>
+<script type="text/javascript">
+
+var host = "http://localhost:";
+var port = "9090";
+
+function getAttributes() {
+	var url = host + port + "/getattributes";
+	
+	var params = "";
+				
+	var http = new XMLHttpRequest();
+	
+	http.open("POST", url, true);
+
+	//Send the proper header information along with the request
+	http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+	http.onreadystatechange = function() {//Call a function when the state changes.
+		if (http.readyState == 4 && http.status == 200) {
+			var resp = JSON.parse(http.responseText);
+			setAttributes(resp);
+		}
+	}
+	
+	http.send(params);
+}
+
+function setAttributes(resp) {
+	var selects = document.getElementsByTagName("select");
+	
+	for (var i = 0; i < 3; i++) {
+		for (var j = 0; j < resp.length; j++) {
+			var option = document.createElement("option");
+			option.value = resp[j];
+			option.innerHTML = resp[j];
+			
+			selects[i].appendChild(option);
+		}		
+	}
+}
+
+function analyse() {
+	var url = host + port + "/analyseinvoices";
+
+	var params = "";
+			
+	var idColumn = document.getElementById("userid").value;
+	params += "idcolumn=" + idColumn + "&";
+	
+	var dateColumn = document.getElementById("date").value;
+	params += "datecolumn=" + dateColumn + "&";
+	
+	var dateFormat = document.getElementById("dateformat").value;
+	params += "dateformat=" + dateFormat + "&";
+	
+	var amountColumn = document.getElementById("amount").value;
+	params += "amountcolumn=" + amountColumn + "&";
+	
+	var users = document.getElementById("users").value;
+	params += "users=" + users + "&";
+	
+	var amount = document.getElementById("amountwithin").value;
+	params += "amount=" + amount + "&";
+	
+	var time = document.getElementById("timeframeamount").value;
+	params += "time=" + time + "&";
+	
+	var timeframe = document.getElementById("timeframe").value;
+	params += "timeframe=" + timeframe;
+				
+	var http = new XMLHttpRequest();
+	
+	http.open("POST", url, true);
+
+	//Send the proper header information along with the request
+	http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+	http.onreadystatechange = function() {//Call a function when the state changes.
+		if (http.readyState == 4 && http.status == 200) {
+			var resp = JSON.parse(http.responseText);
+			setOutput(resp);
+		}
+	}
+	
+	http.send(params);
+}
+
+function setOutput(resp) {
+	var output = document.getElementById('output');	
+	
+	output.innerHTML = "Each point in the plot represents a unique combination of {date, amount}. The color of each point indicates whether this data point is compliant to the specified privacy";
+		
+	var div = document.createElement('div');
+	div.id = "intplot";
+	output.appendChild(div);
+		
+	var xaxiss = [];
+	var yaxiss = [];
+	var texts = [];
+	var colors = [];
+	
+	for (var i = 0; i < resp.length; i++) {
+		xaxiss[i] = resp[i].millis;
+		yaxiss[i] = resp[i].amount;
+		texts[i] = resp[i].date;
+		colors[i] = resp[i].safe;
+	}
+		
+	Plotly.newPlot(div, [{
+			x: xaxiss,
+			y: yaxiss,
+			type: 'scatter',
+			mode: 'markers',
+			marker: {
+				color: colors
+			},			
+			text: texts,
+			hovertemplate: "Price: %{y:$.2f}<extra></extra>",
+			showlegend: false
+		}],
+		{
+			margin: { t: 0 },
+			hovermode: 'closest',			
+			xaxis: {
+				title: 'Date',
+				titlefont: {
+					family: 'Arial, sans-serif',
+					size: 18,
+					color: 'grey'
+				},
+				showticklabels: false,
+				tickangle: 'auto',
+				tickfont: {
+					family: 'Old Standard TT, serif',
+					size: 14,
+				color: 'black'
+				},
+				exponentformat: 'e',
+				showexponent: 'all'
+			},
+			yaxis: {
+				title: 'Invoice Amount',
+				titlefont: {
+					family: 'Arial, sans-serif',
+					size: 18,
+					color: 'grey'
+				},
+				showticklabels: true,
+				tickangle: 'auto',
+				tickfont: {
+					family: 'Old Standard TT, serif',
+					size: 14,
+					color: 'black'
+				}
+			}
+		} 
+	);
+}
+
+</script>
+</head>
+
+<body onload="getAttributes()">
+
+<p>
+	Specify the columns corresponding to the following information:<br>
+	
+	<label for="userid">Identifier of Individuals:</label>
+	<select id="userid">
+	</select><br>
+	
+	<label for="date">Invoice Date:</label>
+	<select id="date">
+	</select>
+	<label for="dateformat">Date Format:</label>
+	<input type="text" id="dateformat"/>Tip: y=year, M=month, d=day, H=hour, m=minute, s=seconds<br>
+	
+	<label for="amount">Invoice Amount:</label>
+	<select id="amount">
+	</select>
+</p>
+
+<p>
+	Specify the privacy parameters:<br>
+	At least <input type="text" id="users" style="width:30px"/> other individuals<br>
+	Having an invoice amount within <input type="text" id="amountwithin" style="width:50px"/><br>
+	Within a timeframe of <input type="text" id="timeframeamount" style="width:30px"/>
+	<select id="timeframe">
+		<option value="Minutes">Minutes</option>
+		<option value="Hours">Hours</option>
+		<option value="Days">Days</option>
+		<option value="Weeks">Weeks</option>
+		<option value="Months">Months</option>
+		<option value="Years">Years</option>
+	</select>
+</p>
+
+<p>
+	<input type="button" value="Analyse" onclick="analyse()">
+</p>
+
+<p id="output">
+	
+</p>
+
+</body>
+
+</html>
+

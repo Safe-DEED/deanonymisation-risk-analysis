@@ -1,0 +1,235 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<title>Safe-DEED Aggregated Data De-Anonymisation Risk Analysis</title>
+
+<script src="https://cdn.plot.ly/plotly-1.2.0.min.js"></script>
+<script type="text/javascript">
+
+var host = "http://localhost:";
+var port = "9090";
+
+function getAttributes() {
+	var url = host + port + "/getattributes";
+	
+	var params = "";
+				
+	var http = new XMLHttpRequest();
+	
+	http.open("POST", url, true);
+
+	//Send the proper header information along with the request
+	http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+	http.onreadystatechange = function() {//Call a function when the state changes.
+		if (http.readyState == 4 && http.status == 200) {
+			var resp = JSON.parse(http.responseText);
+			setAttributes(resp);
+		}
+	}
+	
+	http.send(params);
+}
+
+function setAttributes(resp) {
+	var qis = document.getElementById('qis');
+	
+	for (var i = 0; i < resp.length; i++) {
+		var checkbox = document.createElement('input');
+		checkbox.type = "checkbox";
+		checkbox.id = "att" + resp[i];
+		checkbox.value = resp[i];
+		
+		qis.appendChild(checkbox);
+		
+		var label = document.createElement('label');
+		label.for = "att" + resp[i];
+		label.innerHTML = resp[i];
+		
+		qis.appendChild(label);
+		
+		var br = document.createElement('br');
+		
+		qis.appendChild(br);
+	}
+	
+	var selectallbutton = document.createElement('button');
+	selectallbutton.innerHTML = "Select All";
+	selectallbutton.addEventListener("click", function() {
+		selectAll();
+	});
+	
+	qis.appendChild(selectallbutton);
+}
+
+function selectAll() {
+	var qis = document.getElementById('qis');
+	
+	var checkboxes = qis.getElementsByTagName('input');
+	
+	for (var i = 0; i < checkboxes.length; i++) {	
+		checkboxes[i].checked = true;
+	}
+}
+
+function analyse() {
+	var url = host + port + "/analyseaggregated";
+
+	var params = "";
+			
+	var qis = createQIsString();	
+			
+	params += "qis=" + qis;
+	
+	var http = new XMLHttpRequest();
+	
+	http.open("POST", url, true);
+
+	//Send the proper header information along with the request
+	http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+	http.onreadystatechange = function() {//Call a function when the state changes.
+		if (http.readyState == 4 && http.status == 200) {
+			var resp = JSON.parse(http.responseText);
+			setOutput(resp);
+		}
+	}
+	
+	http.send(params);
+}
+
+function createQIsString() {
+	var qisString = "";
+
+	var qis = document.getElementById('qis');
+	
+	var checkboxes = qis.getElementsByTagName('input');
+	
+	for (var i = 0; i < checkboxes.length; i++) {	
+		if (checkboxes[i].checked) {
+			qisString += checkboxes[i].value + ";";
+		}
+	}
+		
+	return qisString;
+}
+
+function setOutput(resp) {
+	var output = document.getElementById('output');	
+	
+	output.innerHTML = "This is an overview of the dataset's aggregate values. The horizontal line represents the desired k.";
+	
+	var k = document.getElementById('k').value;
+		
+	var div = document.createElement('div');
+	div.id = "intplot";
+	output.appendChild(div);
+		
+	var QIs = getQIs();
+
+	var data = [];
+	var index = 0;
+		
+	for (var i = 0; i < QIs.length; i++) {
+		var xaxiss = [];
+		var yaxiss = [];
+			
+		for (var j = 0; j < resp[QIs[i]].length; j++) {
+			xaxiss[j] = resp[QIs[i]][j].event;
+			yaxiss[j] = resp[QIs[i]][j].count;	
+		}
+			
+		var trace = {
+			x: xaxiss,
+			y: yaxiss,
+			name: QIs[i],
+			type: 'bar'
+		};
+			
+		data[index++] = trace;
+	}
+		
+	var horline = {
+		x: [data[0].x[0], data[0].x[data[0].x.length - 1]],
+		y: [k, k],
+		mode: 'lines',
+		name: "k"
+	};
+		
+	data[index] = horline;
+	
+	var layout = {
+		barmode: 'group',
+		yaxis: {
+			title: 'Count',
+			titlefont: {
+				family: 'Arial, sans-serif',
+				size: 18,
+				color: 'grey'
+			},
+			showticklabels: true,
+			tickangle: 'auto',
+			tickfont: {
+				family: 'Old Standard TT, serif',
+				size: 14,
+				color: 'black'
+			},
+			exponentformat: 'e',
+			showexponent: 'all'				
+		}
+	};
+		
+	Plotly.newPlot(div, data, layout);
+}
+
+function getQIs() {
+	var QIs = [];
+	var index = 0;
+
+	var checkboxes = document.getElementById('qis').getElementsByTagName('input');
+	
+	for (var i = 0; i < checkboxes.length; i++) {	
+		if (checkboxes[i].checked) {
+			QIs[index++] = checkboxes[i].value;			
+		}
+	}
+	
+	return QIs;
+}	
+
+</script>
+
+</head>
+
+<body onload="getAttributes()">
+
+<p>
+	<label for="qis">Specify the QIs:</label>
+	<div id="qis">
+	Quasi-identifiers (QIs) are the attributes that do not directly identify individuals, but their combination could serve as a unique identifier of individuals.<br>
+	</div>	
+	
+</p>
+
+<p>
+	Specify the k value of k-anonymity.<br>
+	K-anonymity is the privacy model that states every individual cannot be distinguished by at least k-1 other individuals.<br>
+	<label for="k">k:</label>
+	<input type="text" id="k" style="width:17px"/>
+</p>
+
+<p>
+	<input type="button" value="Analyse" onclick="analyse()">
+</p>
+
+<p id="output">
+	
+</p>
+
+
+</body>
+
+</html>
+
